@@ -9,7 +9,7 @@ import streamlit as st
 # CONFIGURAÇÃO DA PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Sistema de Conferência", page_icon="📦", layout="wide"
+    page_title="Conferência de volumes Gaja", page_icon="📦", layout="wide"
 )
 
 ARQUIVO_EXCEL = "Programa conferencia.xlsx"
@@ -22,9 +22,10 @@ st.markdown(
     """
     <style>
     .titulo-reduzido {
-        font-size: 20px !important;
+        font-size: 22px !important;
         font-weight: bold;
         margin-bottom: 15px;
+        color: #1e3a8a;
     }
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
@@ -203,7 +204,7 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACKS DE CONFIRMAÇÃO
+# CALLBACKS DE CONFIRMAÇÃO E FOCO
 # ==========================================
 def callback_confirmar_baixa(codigo):
     baixar_volume(codigo)
@@ -225,7 +226,7 @@ except Exception as e:
     st.stop()
 
 st.markdown(
-    '<div class="titulo-reduzido">📦 Sistema de Conferência de Volumes</div>',
+    '<div class="titulo-reduzido">📦 Conferência de volumes Gaja</div>',
     unsafe_allow_html=True,
 )
 
@@ -244,17 +245,19 @@ with aba_leitura:
         key="codigo_input",
     )
 
-    # JavaScript para Auto-foco e Bloqueio do Teclado Virtual (Modo Leitor Físico)
+    # JavaScript focado em restaurar o cursor imediatamente no campo de leitura
     st.components.v1.html(
         """
         <script>
-            setTimeout(function() {
+            function forcarFoco() {
                 var input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
                 if (input) {
-                    input.setAttribute('inputmode', 'none'); // Oculta o teclado virtual no Android/Coletor
+                    input.setAttribute('inputmode', 'none');
                     input.focus();
                 }
-            }, 100);
+            }
+            setTimeout(forcarFoco, 50);
+            setTimeout(forcarFoco, 200);
         </script>
     """,
         height=0,
@@ -299,11 +302,10 @@ with aba_leitura:
             )
 
         else:
-            # Validação: Verifica se é numérico (EAN válido não cadastrado) ou código incorreto
-            if codigo_limpo.isdigit() and (8 <= len(codigo_limpo) <= 14):
-                st.info("ℹ️ Código de barras não localizado na planilha base.")
+            # Validação: Aceita código numérico a partir de 5 números (de 5 a 14 dígitos)
+            if codigo_limpo.isdigit() and (5 <= len(codigo_limpo) <= 14):
                 st.metric(
-                    label="Informação do Item Avulso",
+                    label="Informação do Item",
                     value="1 Volume",
                 )
                 st.progress(0.0)
