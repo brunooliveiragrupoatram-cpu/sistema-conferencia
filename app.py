@@ -16,37 +16,37 @@ ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
 # ==========================================
-# ESTILOS PERSONALIZADOS (CSS & JS AUTO-FOCUS)
+# ESTILOS PERSONALIZADOS
 # ==========================================
 st.markdown(
     """
     <style>
     .titulo-reduzido {
-        font-size: 18px !important;
+        font-size: 20px !important;
         font-weight: bold;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
         border-radius: 8px !important;
     }
     div[data-baseweb="input"] input {
-        font-size: 20px !important;
+        font-size: 22px !important;
         font-weight: bold !important;
-        padding: 8px !important;
+        padding: 10px !important;
     }
     label[data-testid="stWidgetLabel"] {
-        font-size: 16px !important;
+        font-size: 18px !important;
         font-weight: bold !important;
     }
     .txt-produto-encontrado {
-        font-size: 13px !important;
+        font-size: 14px !important;
         color: #2e7d32;
         font-weight: bold;
         margin-top: 5px;
     }
     .txt-codigo-produto {
-        font-size: 15px !important;
+        font-size: 16px !important;
         font-weight: bold;
         color: #0066cc;
         margin-bottom: 10px;
@@ -229,137 +229,152 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ==========================================
-# AREA SUPERIOR - LEITOR DE CÓDIGO DE BARRAS
-# ==========================================
-codigo_lido = st.text_input(
-    "🔍 Leitura de Código de Barras:",
-    placeholder="PASSE O LEITOR AQUI...",
-    key="codigo_input",
+# SEPARAÇÃO EM TELAS/ABAS
+aba_leitura, aba_status = st.tabs(
+    ["🔍 Leitura (Coletor)", "📋 Status dos Produtos"]
 )
 
-# Script JS para garantir o foco automático constante no leitor
-st.components.v1.html(
-    """
-    <script>
-        var input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
-        if (input) { input.focus(); }
-    </script>
-""",
-    height=0,
-)
+# ==========================================
+# TELA 1: LEITURA DO COLETOR
+# ==========================================
+with aba_leitura:
+    codigo_lido = st.text_input(
+        "🔍 Leitura de Código de Barras:",
+        placeholder="PASSE O LEITOR AQUI...",
+        key="codigo_input",
+    )
 
-if codigo_lido:
-    codigo_limpo = codigo_lido.strip()
-    produto = buscar_produto(codigo_limpo)
+    # JavaScript para Auto-foco e Bloqueio do Teclado Virtual (Modo Leitor Físico)
+    st.components.v1.html(
+        """
+        <script>
+            setTimeout(function() {
+                var input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+                if (input) {
+                    input.setAttribute('inputmode', 'none'); // Oculta o teclado virtual no Android/Coletor
+                    input.focus();
+                }
+            }, 100);
+        </script>
+    """,
+        height=0,
+    )
 
-    if produto:
-        cod_produto, vol_totais, vol_conferidos = produto
+    if codigo_lido:
+        codigo_limpo = codigo_lido.strip()
+        produto = buscar_produto(codigo_limpo)
 
-        st.metric(
-            label="Progresso da Conferência",
-            value=f"{vol_conferidos}/{vol_totais} volumes",
-        )
-        porcentagem = (vol_conferidos / vol_totais) if vol_totais > 0 else 0.0
-        st.progress(porcentagem)
+        if produto:
+            cod_produto, vol_totais, vol_conferidos = produto
 
-        if vol_conferidos < vol_totais:
-            st.button(
-                "✅ CONFIRMAR BAIXA (+1 VOLUME)",
-                use_container_width=True,
-                type="primary",
-                on_click=callback_confirmar_baixa,
-                args=(codigo_limpo,),
-            )
-        else:
-            st.warning(f"⚠️ Todos os {vol_totais} volumes já foram conferidos!")
-
-        st.markdown(
-            f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
-            unsafe_allow_html=True,
-        )
-
-    else:
-        # Validação: Verifica se é numérico (EAN válido não cadastrado) ou código incorreto
-        if codigo_limpo.isdigit() and (8 <= len(codigo_limpo) <= 14):
-            st.info("ℹ️ Código de barras não localizado na planilha base.")
             st.metric(
-                label="Informação do Item Avulso",
-                value="1 Volume",
+                label="Progresso da Conferência",
+                value=f"{vol_conferidos}/{vol_totais} volumes",
             )
-            st.progress(0.0)
+            porcentagem = (
+                (vol_conferidos / vol_totais) if vol_totais > 0 else 0.0
+            )
+            st.progress(porcentagem)
 
-            st.button(
-                "✅ CONFIRMAR BAIXA (1 VOLUME)",
-                use_container_width=True,
-                type="primary",
-                on_click=callback_confirmar_avulso,
-                args=(codigo_limpo,),
-            )
+            if vol_conferidos < vol_totais:
+                st.button(
+                    "✅ CONFIRMAR BAIXA (+1 VOLUME)",
+                    use_container_width=True,
+                    type="primary",
+                    on_click=callback_confirmar_baixa,
+                    args=(codigo_limpo,),
+                )
+            else:
+                st.warning(
+                    f"⚠️ Todos os {vol_totais} volumes já foram conferidos!"
+                )
 
             st.markdown(
-                f'<div class="txt-codigo-produto">Código do Produto: AVULSO-{codigo_limpo}</div>',
+                f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
                 unsafe_allow_html=True,
             )
+            st.markdown(
+                '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
+                unsafe_allow_html=True,
+            )
+
         else:
-            st.error("❌ Código digitado/lido está incorreto ou é inválido!")
+            # Validação: Verifica se é numérico (EAN válido não cadastrado) ou código incorreto
+            if codigo_limpo.isdigit() and (8 <= len(codigo_limpo) <= 14):
+                st.info("ℹ️ Código de barras não localizado na planilha base.")
+                st.metric(
+                    label="Informação do Item Avulso",
+                    value="1 Volume",
+                )
+                st.progress(0.0)
 
-st.markdown("---")
+                st.button(
+                    "✅ CONFIRMAR BAIXA (1 VOLUME)",
+                    use_container_width=True,
+                    type="primary",
+                    on_click=callback_confirmar_avulso,
+                    args=(codigo_limpo,),
+                )
+
+                st.markdown(
+                    f'<div class="txt-codigo-produto">Código do Produto: AVULSO-{codigo_limpo}</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
 # ==========================================
-# AREA INFERIOR - STATUS DOS PRODUTOS CADASTRADOS
+# TELA 2: STATUS DOS PRODUTOS
 # ==========================================
-st.subheader("📋 Status dos Produtos Cadastrados")
+with aba_status:
+    st.subheader("📋 Status dos Produtos Cadastrados")
 
-df_produtos = obter_todos_produtos()
+    df_produtos = obter_todos_produtos()
 
-col_filtros, col_busca = st.columns([1, 1])
+    col_filtros, col_busca = st.columns([1, 1])
 
-with col_filtros:
-    filtro_status = st.radio(
-        "Filtrar por status:",
-        options=["Todos", "Pendentes 🟡🔴", "Concluídos 🟢"],
-        horizontal=True,
+    with col_filtros:
+        filtro_status = st.radio(
+            "Filtrar por status:",
+            options=["Todos", "Pendentes 🟡🔴", "Concluídos 🟢"],
+            horizontal=True,
+        )
+
+    with col_busca:
+        busca_filtro = st.text_input(
+            "🔎 Pesquisar por código ou EAN:",
+            placeholder="Digite para filtrar...",
+            key="busca_filtro_key",
+        )
+
+    if filtro_status == "Pendentes 🟡🔴":
+        df_produtos = df_produtos[
+            df_produtos["volumes_conferidos"] < df_produtos["volumes_totais"]
+        ]
+    elif filtro_status == "Concluídos 🟢":
+        df_produtos = df_produtos[
+            df_produtos["volumes_conferidos"] == df_produtos["volumes_totais"]
+        ]
+
+    if busca_filtro:
+        df_produtos = df_produtos[
+            df_produtos["Código do Produto"]
+            .astype(str)
+            .str.contains(busca_filtro, case=False)
+            | df_produtos["Código de Barras"]
+            .astype(str)
+            .str.contains(busca_filtro, case=False)
+        ]
+
+    df_exibicao = df_produtos.drop(
+        columns=["volumes_conferidos", "volumes_totais"]
     )
 
-with col_busca:
-    busca_filtro = st.text_input(
-        "🔎 Pesquisar por código ou EAN:",
-        placeholder="Digite para filtrar...",
+    st.dataframe(
+        df_exibicao,
+        use_container_width=True,
+        hide_index=True,
     )
-
-if filtro_status == "Pendentes 🟡🔴":
-    df_produtos = df_produtos[
-        df_produtos["volumes_conferidos"] < df_produtos["volumes_totais"]
-    ]
-elif filtro_status == "Concluídos 🟢":
-    df_produtos = df_produtos[
-        df_produtos["volumes_conferidos"] == df_produtos["volumes_totais"]
-    ]
-
-if busca_filtro:
-    df_produtos = df_produtos[
-        df_produtos["Código do Produto"]
-        .astype(str)
-        .str.contains(busca_filtro, case=False)
-        | df_produtos["Código de Barras"]
-        .astype(str)
-        .str.contains(busca_filtro, case=False)
-    ]
-
-df_exibicao = df_produtos.drop(
-    columns=["volumes_conferidos", "volumes_totais"]
-)
-
-st.dataframe(
-    df_exibicao,
-    use_container_width=True,
-    hide_index=True,
-)
 
 # ==========================================
 # MENU LATERAL - OPÇÕES E QR CODE
