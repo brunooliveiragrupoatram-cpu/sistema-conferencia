@@ -17,34 +17,47 @@ BANCO_DADOS = "conferencia.db"
 
 # ==========================================
 # ESTILOS PERSONALIZADOS (CSS)
-# Reduz o título e destaca o processo no leitor
 # ==========================================
 st.markdown(
     """
     <style>
     /* Reduz o tamanho do título principal */
     .titulo-reduzido {
-        font-size: 20px !important;
+        font-size: 18px !important;
         font-weight: bold;
         margin-bottom: 10px;
     }
     
-    /* Destaca o campo de digitação do leitor */
+    /* Destaca o campo do leitor */
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
         border-radius: 8px !important;
     }
     
     div[data-baseweb="input"] input {
-        font-size: 22px !important;
+        font-size: 20px !important;
         font-weight: bold !important;
-        padding: 10px !important;
+        padding: 8px !important;
     }
 
-    /* Aumenta a visibilidade do rótulo do leitor */
     label[data-testid="stWidgetLabel"] {
-        font-size: 18px !important;
+        font-size: 16px !important;
         font-weight: bold !important;
+    }
+
+    /* Estilo reduzido para Produto Encontrado e Código */
+    .txt-produto-encontrado {
+        font-size: 13px !important;
+        color: #2e7d32;
+        font-weight: bold;
+        margin-top: 5px;
+    }
+    
+    .txt-codigo-produto {
+        font-size: 15px !important;
+        font-weight: bold;
+        color: #0066cc;
+        margin-bottom: 10px;
     }
     </style>
 """,
@@ -201,10 +214,9 @@ st.markdown('<div class="titulo-reduzido">📦 Sistema de Conferência de Volume
 col_leitura, col_tabela = st.columns([1.2, 1], gap="large")
 
 with col_leitura:
-    st.subheader("🔍 Leitura de Código de Barras")
-
+    # 1. LEITOR DE CÓDIGO DE BARRAS
     codigo_lido = st.text_input(
-        "Aguardando bip do leitor:",
+        "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
         key="codigo_input",
     )
@@ -216,16 +228,7 @@ with col_leitura:
         if produto:
             cod_produto, vol_totais, vol_conferidos = produto
 
-            st.success("✅ Produto Encontrado")
-            
-            # Caixa destacando os dados do produto encontrado
-            st.markdown(f"""
-            <div style="background-color: #f0f4f8; padding: 15px; border-radius: 8px; border-left: 5px solid #0066cc; margin-bottom: 15px;">
-                <span style="font-size: 16px; color: #333;">Código do Produto:</span><br>
-                <span style="font-size: 26px; font-weight: bold; color: #0066cc;">{cod_produto}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
+            # 2. PROGRESSO DA CONFERÊNCIA
             st.metric(
                 label="Progresso da Conferência",
                 value=f"{vol_conferidos}/{vol_totais} volumes",
@@ -235,8 +238,7 @@ with col_leitura:
             )
             st.progress(porcentagem)
 
-            st.markdown("---")
-
+            # 3. CONFIRMAR BAIXA
             if vol_conferidos < vol_totais:
                 if st.button(
                     "✅ CONFIRMAR BAIXA (+1 VOLUME)",
@@ -245,11 +247,27 @@ with col_leitura:
                 ):
                     baixar_volume(codigo_limpo)
                     st.toast("Volume registrado com sucesso!", icon="🎉")
+                    # Limpa o campo do leitor para a próxima bipagem
+                    st.session_state["codigo_input"] = ""
                     st.rerun()
             else:
                 st.warning(
-                    f"⚠️ O produto **{cod_produto}** já teve todos os {vol_totais} volumes conferidos!"
+                    f"⚠️ Todos os {vol_totais} volumes já foram conferidos!"
                 )
+
+            st.markdown("---")
+
+            # 4. CÓDIGO DO PRODUTO (Tamanho reduzido)
+            st.markdown(
+                f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
+                unsafe_allow_html=True,
+            )
+
+            # 5. PRODUTO ENCONTRADO (Tamanho reduzido)
+            st.markdown(
+                '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
+                unsafe_allow_html=True,
+            )
 
         else:
             st.error("❌ Código de barras não encontrado no cadastro.")
