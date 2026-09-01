@@ -21,14 +21,12 @@ BANCO_DADOS = "conferencia.db"
 st.markdown(
     """
     <style>
-    /* Reduz o tamanho do título principal */
     .titulo-reduzido {
         font-size: 18px !important;
         font-weight: bold;
         margin-bottom: 10px;
     }
     
-    /* Destaca o campo do leitor */
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
         border-radius: 8px !important;
@@ -45,7 +43,6 @@ st.markdown(
         font-weight: bold !important;
     }
 
-    /* Estilo reduzido para Produto Encontrado e Código */
     .txt-produto-encontrado {
         font-size: 13px !important;
         color: #2e7d32;
@@ -153,6 +150,21 @@ def buscar_produto(cod_barras):
     return resultado
 
 
+def registrar_novo_produto_avulso(cod_barras):
+    """Insere um código não encontrado com 1 volume total e 1 conferido."""
+    conn = conectar_bd()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO conferencia (cod_barras, cod_produto, volumes_totais, volumes_conferidos)
+        VALUES (?, ?, 1, 1)
+    """,
+        (cod_barras, f"AVULSO-{cod_barras}"),
+    )
+    conn.commit()
+    conn.close()
+
+
 def baixar_volume(cod_barras):
     conn = conectar_bd()
     cursor = conn.cursor()
@@ -247,7 +259,6 @@ with col_leitura:
                 ):
                     baixar_volume(codigo_limpo)
                     st.toast("Volume registrado com sucesso!", icon="🎉")
-                    # Limpa o campo do leitor para a próxima bipagem
                     st.session_state["codigo_input"] = ""
                     st.rerun()
             else:
@@ -257,20 +268,43 @@ with col_leitura:
 
             st.markdown("---")
 
-            # 4. CÓDIGO DO PRODUTO (Tamanho reduzido)
+            # 4. CÓDIGO DO PRODUTO
             st.markdown(
                 f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
                 unsafe_allow_html=True,
             )
 
-            # 5. PRODUTO ENCONTRADO (Tamanho reduzido)
+            # 5. PRODUTO ENCONTRADO
             st.markdown(
                 '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
                 unsafe_allow_html=True,
             )
 
         else:
-            st.error("❌ Código de barras não encontrado no cadastro.")
+            # CASO O CÓDIGO NÃO EXISTA NA PLANILHA
+            st.error("⚠️ Código não cadastrado na planilha!")
+            
+            st.metric(
+                label="Progresso da Conferência (Item Avulso)",
+                value="0/1 volume",
+            )
+            st.progress(0.0)
+
+            if st.button(
+                "✅ CONFIRMAR BAIXA (1 VOLUME)",
+                use_container_width=True,
+                type="primary",
+            ):
+                registrar_novo_produto_avulso(codigo_limpo)
+                st.toast("Item avulso registrado (1 volume)!", icon="🎉")
+                st.session_state["codigo_input"] = ""
+                st.rerun()
+
+            st.markdown("---")
+            st.markdown(
+                f'<div class="txt-codigo-produto">Código do Produto: AVULSO-{codigo_limpo}</div>',
+                unsafe_allow_html=True,
+            )
 
 with col_tabela:
     st.subheader("📋 Status dos Produtos Cadastrados")
