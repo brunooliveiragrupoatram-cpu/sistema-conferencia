@@ -15,7 +15,9 @@ st.set_page_config(
 ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
-# Estilos CSS personalizados
+# ==========================================
+# ESTILOS PERSONALIZADOS (CSS & JS AUTO-FOCUS)
+# ==========================================
 st.markdown(
     """
     <style>
@@ -201,7 +203,7 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACKS DE CONFIRMAÇÃO (LIMPEZA SEGURA DO INPUT)
+# CALLBACKS DE CONFIRMAÇÃO
 # ==========================================
 def callback_confirmar_baixa(codigo):
     baixar_volume(codigo)
@@ -228,64 +230,66 @@ st.markdown(
 )
 
 # ==========================================
-# LAYOUT EM COLUNAS
+# AREA SUPERIOR - LEITOR DE CÓDIGO DE BARRAS
 # ==========================================
-col_leitura, col_tabela = st.columns([1.2, 1], gap="large")
+codigo_lido = st.text_input(
+    "🔍 Leitura de Código de Barras:",
+    placeholder="PASSE O LEITOR AQUI...",
+    key="codigo_input",
+)
 
-with col_leitura:
-    codigo_lido = st.text_input(
-        "🔍 Leitura de Código de Barras:",
-        placeholder="PASSE O LEITOR AQUI...",
-        key="codigo_input",
-    )
+# Script JS para garantir o foco automático constante no leitor
+st.components.v1.html(
+    """
+    <script>
+        var input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+        if (input) { input.focus(); }
+    </script>
+""",
+    height=0,
+)
 
-    if codigo_lido:
-        codigo_limpo = codigo_lido.strip()
-        produto = buscar_produto(codigo_limpo)
+if codigo_lido:
+    codigo_limpo = codigo_lido.strip()
+    produto = buscar_produto(codigo_limpo)
 
-        if produto:
-            cod_produto, vol_totais, vol_conferidos = produto
+    if produto:
+        cod_produto, vol_totais, vol_conferidos = produto
 
-            st.metric(
-                label="Progresso da Conferência",
-                value=f"{vol_conferidos}/{vol_totais} volumes",
+        st.metric(
+            label="Progresso da Conferência",
+            value=f"{vol_conferidos}/{vol_totais} volumes",
+        )
+        porcentagem = (vol_conferidos / vol_totais) if vol_totais > 0 else 0.0
+        st.progress(porcentagem)
+
+        if vol_conferidos < vol_totais:
+            st.button(
+                "✅ CONFIRMAR BAIXA (+1 VOLUME)",
+                use_container_width=True,
+                type="primary",
+                on_click=callback_confirmar_baixa,
+                args=(codigo_limpo,),
             )
-            porcentagem = (
-                (vol_conferidos / vol_totais) if vol_totais > 0 else 0.0
-            )
-            st.progress(porcentagem)
-
-            if vol_conferidos < vol_totais:
-                st.button(
-                    "✅ CONFIRMAR BAIXA (+1 VOLUME)",
-                    use_container_width=True,
-                    type="primary",
-                    on_click=callback_confirmar_baixa,
-                    args=(codigo_limpo,),
-                )
-            else:
-                st.warning(
-                    f"⚠️ Todos os {vol_totais} volumes já foram conferidos!"
-                )
-
-            st.markdown("---")
-
-            st.markdown(
-                f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
-                unsafe_allow_html=True,
-            )
-
-            st.markdown(
-                '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
-                unsafe_allow_html=True,
-            )
-
         else:
-            st.error("⚠️ Código não cadastrado na planilha!")
+            st.warning(f"⚠️ Todos os {vol_totais} volumes já foram conferidos!")
 
+        st.markdown(
+            f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
+            unsafe_allow_html=True,
+        )
+
+    else:
+        # Validação: Verifica se é numérico (EAN válido não cadastrado) ou código incorreto
+        if codigo_limpo.isdigit() and (8 <= len(codigo_limpo) <= 14):
+            st.info("ℹ️ Código de barras não localizado na planilha base.")
             st.metric(
-                label="Progresso da Conferência (Item Avulso)",
-                value="0/1 volume",
+                label="Informação do Item Avulso",
+                value="1 Volume",
             )
             st.progress(0.0)
 
@@ -297,56 +301,65 @@ with col_leitura:
                 args=(codigo_limpo,),
             )
 
-            st.markdown("---")
             st.markdown(
                 f'<div class="txt-codigo-produto">Código do Produto: AVULSO-{codigo_limpo}</div>',
                 unsafe_allow_html=True,
             )
+        else:
+            st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-with col_tabela:
-    st.subheader("📋 Status dos Produtos Cadastrados")
+st.markdown("---")
 
-    df_produtos = obter_todos_produtos()
+# ==========================================
+# AREA INFERIOR - STATUS DOS PRODUTOS CADASTRADOS
+# ==========================================
+st.subheader("📋 Status dos Produtos Cadastrados")
 
+df_produtos = obter_todos_produtos()
+
+col_filtros, col_busca = st.columns([1, 1])
+
+with col_filtros:
     filtro_status = st.radio(
         "Filtrar por status:",
         options=["Todos", "Pendentes 🟡🔴", "Concluídos 🟢"],
         horizontal=True,
     )
 
-    if filtro_status == "Pendentes 🟡🔴":
-        df_produtos = df_produtos[
-            df_produtos["volumes_conferidos"] < df_produtos["volumes_totais"]
-        ]
-    elif filtro_status == "Concluídos 🟢":
-        df_produtos = df_produtos[
-            df_produtos["volumes_conferidos"] == df_produtos["volumes_totais"]
-        ]
-
+with col_busca:
     busca_filtro = st.text_input(
         "🔎 Pesquisar por código ou EAN:",
         placeholder="Digite para filtrar...",
     )
 
-    if busca_filtro:
-        df_produtos = df_produtos[
-            df_produtos["Código do Produto"]
-            .astype(str)
-            .str.contains(busca_filtro, case=False)
-            | df_produtos["Código de Barras"]
-            .astype(str)
-            .str.contains(busca_filtro, case=False)
-        ]
+if filtro_status == "Pendentes 🟡🔴":
+    df_produtos = df_produtos[
+        df_produtos["volumes_conferidos"] < df_produtos["volumes_totais"]
+    ]
+elif filtro_status == "Concluídos 🟢":
+    df_produtos = df_produtos[
+        df_produtos["volumes_conferidos"] == df_produtos["volumes_totais"]
+    ]
 
-    df_exibicao = df_produtos.drop(
-        columns=["volumes_conferidos", "volumes_totais"]
-    )
+if busca_filtro:
+    df_produtos = df_produtos[
+        df_produtos["Código do Produto"]
+        .astype(str)
+        .str.contains(busca_filtro, case=False)
+        | df_produtos["Código de Barras"]
+        .astype(str)
+        .str.contains(busca_filtro, case=False)
+    ]
 
-    st.dataframe(
-        df_exibicao,
-        use_container_width=True,
-        hide_index=True,
-    )
+df_exibicao = df_produtos.drop(
+    columns=["volumes_conferidos", "volumes_totais"]
+)
+
+st.dataframe(
+    df_exibicao,
+    use_container_width=True,
+    hide_index=True,
+)
 
 # ==========================================
 # MENU LATERAL - OPÇÕES E QR CODE
