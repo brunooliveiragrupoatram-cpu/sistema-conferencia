@@ -15,9 +15,7 @@ st.set_page_config(
 ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
-# ==========================================
-# ESTILOS PERSONALIZADOS (CSS)
-# ==========================================
+# Estilos CSS personalizados
 st.markdown(
     """
     <style>
@@ -26,30 +24,25 @@ st.markdown(
         font-weight: bold;
         margin-bottom: 10px;
     }
-    
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
         border-radius: 8px !important;
     }
-    
     div[data-baseweb="input"] input {
         font-size: 20px !important;
         font-weight: bold !important;
         padding: 8px !important;
     }
-
     label[data-testid="stWidgetLabel"] {
         font-size: 16px !important;
         font-weight: bold !important;
     }
-
     .txt-produto-encontrado {
         font-size: 13px !important;
         color: #2e7d32;
         font-weight: bold;
         margin-top: 5px;
     }
-    
     .txt-codigo-produto {
         font-size: 15px !important;
         font-weight: bold;
@@ -151,7 +144,6 @@ def buscar_produto(cod_barras):
 
 
 def registrar_novo_produto_avulso(cod_barras):
-    """Insere um código não encontrado com 1 volume total e 1 conferido."""
     conn = conectar_bd()
     cursor = conn.cursor()
     cursor.execute(
@@ -209,6 +201,19 @@ def resetar_conferencia():
 
 
 # ==========================================
+# CALLBACKS DE CONFIRMAÇÃO (LIMPEZA SEGURA DO INPUT)
+# ==========================================
+def callback_confirmar_baixa(codigo):
+    baixar_volume(codigo)
+    st.session_state["codigo_input"] = ""
+
+
+def callback_confirmar_avulso(codigo):
+    registrar_novo_produto_avulso(codigo)
+    st.session_state["codigo_input"] = ""
+
+
+# ==========================================
 # INICIALIZAÇÃO
 # ==========================================
 try:
@@ -217,8 +222,10 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# TÍTULO REDUZIDO
-st.markdown('<div class="titulo-reduzido">📦 Sistema de Conferência de Volumes</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="titulo-reduzido">📦 Sistema de Conferência de Volumes</div>',
+    unsafe_allow_html=True,
+)
 
 # ==========================================
 # LAYOUT EM COLUNAS
@@ -226,7 +233,6 @@ st.markdown('<div class="titulo-reduzido">📦 Sistema de Conferência de Volume
 col_leitura, col_tabela = st.columns([1.2, 1], gap="large")
 
 with col_leitura:
-    # 1. LEITOR DE CÓDIGO DE BARRAS
     codigo_lido = st.text_input(
         "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
@@ -240,7 +246,6 @@ with col_leitura:
         if produto:
             cod_produto, vol_totais, vol_conferidos = produto
 
-            # 2. PROGRESSO DA CONFERÊNCIA
             st.metric(
                 label="Progresso da Conferência",
                 value=f"{vol_conferidos}/{vol_totais} volumes",
@@ -250,17 +255,14 @@ with col_leitura:
             )
             st.progress(porcentagem)
 
-            # 3. CONFIRMAR BAIXA
             if vol_conferidos < vol_totais:
-                if st.button(
+                st.button(
                     "✅ CONFIRMAR BAIXA (+1 VOLUME)",
                     use_container_width=True,
                     type="primary",
-                ):
-                    baixar_volume(codigo_limpo)
-                    st.toast("Volume registrado com sucesso!", icon="🎉")
-                    st.session_state["codigo_input"] = ""
-                    st.rerun()
+                    on_click=callback_confirmar_baixa,
+                    args=(codigo_limpo,),
+                )
             else:
                 st.warning(
                     f"⚠️ Todos os {vol_totais} volumes já foram conferidos!"
@@ -268,37 +270,32 @@ with col_leitura:
 
             st.markdown("---")
 
-            # 4. CÓDIGO DO PRODUTO
             st.markdown(
                 f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
                 unsafe_allow_html=True,
             )
 
-            # 5. PRODUTO ENCONTRADO
             st.markdown(
                 '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
                 unsafe_allow_html=True,
             )
 
         else:
-            # CASO O CÓDIGO NÃO EXISTA NA PLANILHA
             st.error("⚠️ Código não cadastrado na planilha!")
-            
+
             st.metric(
                 label="Progresso da Conferência (Item Avulso)",
                 value="0/1 volume",
             )
             st.progress(0.0)
 
-            if st.button(
+            st.button(
                 "✅ CONFIRMAR BAIXA (1 VOLUME)",
                 use_container_width=True,
                 type="primary",
-            ):
-                registrar_novo_produto_avulso(codigo_limpo)
-                st.toast("Item avulso registrado (1 volume)!", icon="🎉")
-                st.session_state["codigo_input"] = ""
-                st.rerun()
+                on_click=callback_confirmar_avulso,
+                args=(codigo_limpo,),
+            )
 
             st.markdown("---")
             st.markdown(
