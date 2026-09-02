@@ -21,7 +21,6 @@ BANCO_DADOS = "conferencia.db"
 st.markdown(
     """
     <style>
-    /* Remove espaçamentos topo/fundo para caber na tela */
     .block-container {
         padding-top: 0.8rem !important;
         padding-bottom: 0rem !important;
@@ -32,7 +31,6 @@ st.markdown(
         display: none !important;
     }
     
-    /* Título Verde Escuro no Topo */
     .titulo-topo {
         font-size: 18px !important;
         font-weight: bold;
@@ -42,7 +40,6 @@ st.markdown(
         text-align: center;
     }
     
-    /* Estilo do Input de Leitura */
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
         border-radius: 6px !important;
@@ -58,7 +55,6 @@ st.markdown(
         margin-bottom: 2px !important;
     }
     
-    /* Indicadores e Textos Compactos */
     .txt-produto-encontrado {
         font-size: 13px !important;
         color: #2e7d32;
@@ -73,7 +69,6 @@ st.markdown(
         margin-bottom: 4px !important;
     }
     
-    /* Ajustes em botões e métricas */
     div[data-testid="stMetric"] {
         padding: 0px !important;
     }
@@ -261,15 +256,14 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# Título Verde Escuro posicionado no topo
 st.markdown(
     '<div class="titulo-topo">📦 Conferência de volumes Gaja</div>',
     unsafe_allow_html=True,
 )
 
-# SEPARAÇÃO EM TELAS/ABAS
-aba_leitura, aba_status = st.tabs(
-    ["🔍 Leitura (Coletor)", "📋 Status dos Produtos"]
+# SEPARAÇÃO EM 3 ABAS NA TELA PRINCIPAL
+aba_leitura, aba_status, aba_opcoes = st.tabs(
+    ["🔍 Leitura", "📋 Status", "⚙️ Opções"]
 )
 
 # ==========================================
@@ -282,7 +276,6 @@ with aba_leitura:
         key="codigo_input",
     )
 
-    # JavaScript para Auto-foco instantâneo sem abrir teclado
     st.components.v1.html(
         """
         <script>
@@ -339,7 +332,6 @@ with aba_leitura:
             )
 
         else:
-            # Validação: Código numérico (de 5 a 14 dígitos)
             if codigo_limpo.isdigit() and (5 <= len(codigo_limpo) <= 14):
                 st.metric(
                     label="Informação do Item",
@@ -416,27 +408,28 @@ with aba_status:
     )
 
 # ==========================================
-# MENU LATERAL - OPÇÕES E QR CODE
+# TELA 3: OPÇÕES (REINICIAR & QR CODE)
 # ==========================================
-with st.sidebar:
-    st.header("📲 Conectar Coletor")
+with aba_opcoes:
+    st.subheader("⚙️ Configurações e Ações")
 
+    if st.button("🔄 Reiniciar Toda a Conferência", use_container_width=True):
+        resetar_conferencia()
+        st.success("Conferência reiniciada com sucesso!")
+        st.rerun()
+
+    st.markdown("---")
+    st.markdown("### 📲 Conectar outro Coletor")
     url_app = st.text_input(
-        "Link do sistema (Streamlit Cloud):",
+        "Link do sistema:",
         placeholder="https://seu-sistema.streamlit.app",
+        key="url_app_key",
     )
 
     if url_app:
         qr_img = gerar_qrcode(url_app)
         st.image(
             qr_img,
-            caption="Escanear com a câmera ou leitor do coletor",
+            caption="Escanear com a câmera do coletor",
             use_container_width=True,
         )
-
-    st.markdown("---")
-    st.header("⚙️ Opções")
-    if st.button("🔄 Reiniciar Toda a Conferência", use_container_width=True):
-        resetar_conferencia()
-        st.success("Conferência reiniciada!")
-        st.rerun()
