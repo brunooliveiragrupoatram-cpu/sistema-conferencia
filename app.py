@@ -16,41 +16,77 @@ ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
 # ==========================================
-# ESTILOS PERSONALIZADOS
+# ESTILOS COMPACTOS (LAYOUT ENXUTO PARA COLETOR)
 # ==========================================
 st.markdown(
     """
     <style>
-    .titulo-reduzido {
-        font-size: 22px !important;
-        font-weight: bold;
-        margin-bottom: 15px;
-        color: #1e3a8a;
+    /* Remove espaçamentos topo/fundo para caber na tela */
+    .block-container {
+        padding-top: 0.8rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    
+    /* Título Verde Escuro no Topo */
+    .titulo-topo {
+        font-size: 18px !important;
+        font-weight: bold;
+        color: #1b5e20 !important;
+        margin-bottom: 5px !important;
+        margin-top: 0px !important;
+        text-align: center;
+    }
+    
+    /* Estilo do Input de Leitura */
     div[data-baseweb="input"] {
         border: 2px solid #0066cc !important;
-        border-radius: 8px !important;
+        border-radius: 6px !important;
     }
     div[data-baseweb="input"] input {
-        font-size: 22px !important;
-        font-weight: bold !important;
-        padding: 10px !important;
-    }
-    label[data-testid="stWidgetLabel"] {
         font-size: 18px !important;
         font-weight: bold !important;
+        padding: 6px 10px !important;
     }
+    label[data-testid="stWidgetLabel"] {
+        font-size: 15px !important;
+        font-weight: bold !important;
+        margin-bottom: 2px !important;
+    }
+    
+    /* Indicadores e Textos Compactos */
     .txt-produto-encontrado {
-        font-size: 14px !important;
+        font-size: 13px !important;
         color: #2e7d32;
         font-weight: bold;
-        margin-top: 5px;
+        margin-top: 2px !important;
     }
     .txt-codigo-produto {
-        font-size: 16px !important;
+        font-size: 14px !important;
         font-weight: bold;
         color: #0066cc;
-        margin-bottom: 10px;
+        margin-top: 4px !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Ajustes em botões e métricas */
+    div[data-testid="stMetric"] {
+        padding: 0px !important;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 22px !important;
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 13px !important;
+    }
+    .stButton button {
+        padding: 8px 12px !important;
+        font-size: 15px !important;
+        font-weight: bold !important;
     }
     </style>
 """,
@@ -204,7 +240,7 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACKS DE CONFIRMAÇÃO E FOCO
+# CALLBACKS DE CONFIRMAÇÃO
 # ==========================================
 def callback_confirmar_baixa(codigo):
     baixar_volume(codigo)
@@ -225,8 +261,9 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
+# Título Verde Escuro posicionado no topo
 st.markdown(
-    '<div class="titulo-reduzido">📦 Conferência de volumes Gaja</div>',
+    '<div class="titulo-topo">📦 Conferência de volumes Gaja</div>',
     unsafe_allow_html=True,
 )
 
@@ -245,7 +282,7 @@ with aba_leitura:
         key="codigo_input",
     )
 
-    # JavaScript focado em restaurar o cursor imediatamente no campo de leitura
+    # JavaScript para Auto-foco instantâneo sem abrir teclado
     st.components.v1.html(
         """
         <script>
@@ -257,7 +294,7 @@ with aba_leitura:
                 }
             }
             setTimeout(forcarFoco, 50);
-            setTimeout(forcarFoco, 200);
+            setTimeout(forcarFoco, 150);
         </script>
     """,
         height=0,
@@ -302,7 +339,7 @@ with aba_leitura:
             )
 
         else:
-            # Validação: Aceita código numérico a partir de 5 números (de 5 a 14 dígitos)
+            # Validação: Código numérico (de 5 a 14 dígitos)
             if codigo_limpo.isdigit() and (5 <= len(codigo_limpo) <= 14):
                 st.metric(
                     label="Informação do Item",
