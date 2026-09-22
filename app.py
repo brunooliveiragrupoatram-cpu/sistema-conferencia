@@ -22,6 +22,9 @@ if "aba_atual" not in st.session_state:
 if "codigo_lido_input" not in st.session_state:
     st.session_state["codigo_lido_input"] = ""
 
+if "ultimo_codigo_processado" not in st.session_state:
+    st.session_state["ultimo_codigo_processado"] = ""
+
 # ==========================================
 # ESTILOS COMPACTOS
 # ==========================================
@@ -228,22 +231,24 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# Captura valor vindo da interface HTML customizada
+# PROCESSAMENTO DOS PARÂMETROS DA URL
 params = st.query_params
 if "barcode" in params:
-    st.session_state["codigo_lido_input"] = params["barcode"]
-    # Limpa parâmetro da URL
+    codigo_url = params["barcode"].strip()
+    if codigo_url == "CLEAR":
+        st.session_state["codigo_lido_input"] = ""
+        st.session_state["ultimo_codigo_processado"] = ""
+    else:
+        st.session_state["codigo_lido_input"] = codigo_url
     st.query_params.clear()
 
 # ==========================================
 # CONTEÚDO PRINCIPAL
 # ==========================================
 if st.session_state["aba_atual"] == "Leitura":
-    st.markdown(
-        "**🔍 Leitura de Código de Barras:**", unsafe_allow_html=True
-    )
+    st.markdown("**🔍 Leitura de Código de Barras:**")
 
-    # COMPONENTE DE ENTRADA HTML COM FOCO AUTOMÁTICO INQUEBRÁVEL
+    # ENTRADA HTML COM MANUTENÇÃO RIGOROSA DO CURSOR
     components.html(
         f"""
         <!DOCTYPE html>
@@ -273,29 +278,24 @@ if st.session_state["aba_atual"] == "Leitura":
                     border-radius: 6px;
                     cursor: pointer;
                 }}
-                button:hover {{
-                    background-color: #e0e2e6;
-                }}
             </style>
         </head>
         <body>
             <div class="input-container">
-                <input type="text" id="barcode_input" placeholder="PASSE O LEITOR AQUI..." value="{st.session_state['codigo_lido_input']}" prefix="" autofocus />
-                <button onclick="limparEFocus()">❌ Limpar</button>
+                <input type="text" id="barcode_input" placeholder="PASSE O LEITOR AQUI..." value="{st.session_state['codigo_lido_input']}" autofocus />
+                <button onclick="limparCampos()">❌ Limpar</button>
             </div>
 
             <script>
                 const input = document.getElementById('barcode_input');
 
-                // Foco imediato e contínuo
-                function aplicarFoco() {{
+                function garantirFoco() {{
                     input.focus();
                 }}
                 
-                aplicarFoco();
-                setInterval(aplicarFoco, 300);
+                garantirFoco();
+                setInterval(garantirFoco, 300);
 
-                // Ao pressionar Enter (leitor de código de barras)
                 input.addEventListener('keypress', function(e) {{
                     if (e.key === 'Enter') {{
                         e.preventDefault();
@@ -306,11 +306,10 @@ if st.session_state["aba_atual"] == "Leitura":
                     }}
                 }});
 
-                // Botão Limpar com foco imediato de volta ao input
-                function limparEFocus() {{
+                function limparCampos() {{
                     input.value = '';
-                    aplicarFoco();
-                    window.parent.location.search = '?barcode=';
+                    garantirFoco();
+                    window.parent.location.search = '?barcode=CLEAR';
                 }}
             </script>
         </body>
@@ -324,6 +323,7 @@ if st.session_state["aba_atual"] == "Leitura":
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
+        # Baixa o volume no banco se for uma nova leitura
         if st.session_state.get("ultimo_codigo_processado") != codigo_limpo:
             produto = buscar_produto(codigo_limpo)
             if produto:
@@ -332,6 +332,7 @@ if st.session_state["aba_atual"] == "Leitura":
                 registrar_novo_produto_avulso(codigo_limpo)
             st.session_state["ultimo_codigo_processado"] = codigo_limpo
 
+        # Busca dados atualizados após a baixa
         produto = buscar_produto(codigo_limpo)
 
         if produto:
