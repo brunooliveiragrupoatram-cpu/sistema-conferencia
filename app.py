@@ -239,6 +239,14 @@ def resetar_conferencia():
 
 
 # ==========================================
+# CALLBACKS DE LIMPEZA
+# ==========================================
+def limpar_dados():
+    st.session_state["codigo_input"] = ""
+    st.session_state["ultimo_codigo_processado"] = ""
+
+
+# ==========================================
 # INICIALIZAÇÃO
 # ==========================================
 try:
@@ -263,13 +271,14 @@ with aba_leitura:
         key="codigo_input",
     )
 
-    # Ação do botão Limpar com rerun forçado para redirecionar o foco
-    if st.button("❌ Limpar", use_container_width=True):
-        st.session_state["codigo_input"] = ""
-        st.session_state["ultimo_codigo_processado"] = ""
-        st.rerun()
+    # Botão Limpar utilizando callback para evitar erros de ciclo de vida
+    st.button(
+        "❌ Limpar",
+        use_container_width=True,
+        on_click=limpar_dados,
+    )
 
-    # JavaScript continuo para forçar o foco no campo de texto
+    # JavaScript para forçar e manter o foco no campo de texto
     st.components.v1.html(
         """
         <script>
@@ -280,17 +289,17 @@ with aba_leitura:
                     inputLeitura.setAttribute('inputmode', 'none');
                     if (window.parent.document.activeElement !== inputLeitura) {
                         inputLeitura.focus();
-                        inputLeitura.click();
                     }
                 }
             }
-            setInterval(forcarFoco, 300);
+            setTimeout(forcarFoco, 50);
+            setTimeout(forcarFoco, 200);
         </script>
     """,
         height=0,
     )
 
-    # Informações de quantidade de volumes abaixo
+    # Processamento e Informações de quantidade de volumes abaixo
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
