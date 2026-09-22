@@ -22,8 +22,8 @@ st.markdown(
     """
     <style>
     .block-container {
-        padding-top: 0.8rem !important;
-        padding-bottom: 0rem !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -31,13 +31,15 @@ st.markdown(
         display: none !important;
     }
     
-    .titulo-topo {
-        font-size: 18px !important;
+    .titulo-rodape {
+        font-size: 14px !important;
         font-weight: bold;
         color: #1b5e20 !important;
-        margin-bottom: 5px !important;
-        margin-top: 0px !important;
+        margin-top: 20px !important;
+        margin-bottom: 10px !important;
         text-align: center;
+        border-top: 1px solid #e0e0e0;
+        padding-top: 8px;
     }
     
     div[data-baseweb="input"] {
@@ -253,11 +255,6 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-st.markdown(
-    '<div class="titulo-topo">📦 Conferência de volumes Gaja</div>',
-    unsafe_allow_html=True,
-)
-
 # SEPARAÇÃO EM 3 ABAS NA TELA PRINCIPAL
 aba_leitura, aba_status, aba_opcoes = st.tabs(
     ["🔍 Leitura", "📋 Status", "⚙️ Opções"]
@@ -267,13 +264,21 @@ aba_leitura, aba_status, aba_opcoes = st.tabs(
 # TELA 1: LEITURA DO COLETOR
 # ==========================================
 with aba_leitura:
+    # 1. Campo de leitura no TOPO
     codigo_lido = st.text_input(
         "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
         key="codigo_input",
     )
 
-    # JavaScript para Auto-foco instantâneo sem abrir teclado
+    # 2. Botão Limpar logo abaixo da leitura
+    st.button(
+        "❌ Limpar",
+        use_container_width=True,
+        on_click=callback_limpar,
+    )
+
+    # Auto-foco via JS
     st.components.v1.html(
         """
         <script>
@@ -291,14 +296,11 @@ with aba_leitura:
         height=0,
     )
 
+    # 3. Informações de quantidade de volumes abaixo
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
-        # Baixa/registro automático ao bipar o código
-        if (
-            st.session_state.get("ultimo_codigo_processado")
-            != codigo_limpo
-        ):
+        if st.session_state.get("ultimo_codigo_processado") != codigo_limpo:
             produto = buscar_produto(codigo_limpo)
             if produto:
                 baixar_volume(codigo_limpo)
@@ -306,7 +308,6 @@ with aba_leitura:
                 registrar_novo_produto_avulso(codigo_limpo)
             st.session_state["ultimo_codigo_processado"] = codigo_limpo
 
-        # Exibição do Resultado
         produto = buscar_produto(codigo_limpo)
 
         if produto:
@@ -345,12 +346,11 @@ with aba_leitura:
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-        # Botão de Limpar
-        st.button(
-            "❌ Limpar",
-            use_container_width=True,
-            on_click=callback_limpar,
-        )
+    # 4. Título no RODAPÉ
+    st.markdown(
+        '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
+        unsafe_allow_html=True,
+    )
 
 # ==========================================
 # TELA 2: STATUS DOS PRODUTOS
