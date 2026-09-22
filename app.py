@@ -4,7 +4,6 @@ import sqlite3
 import pandas as pd
 import qrcode
 import streamlit as st
-import streamlit.components.v1 as components
 
 # ==========================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -16,17 +15,18 @@ st.set_page_config(
 ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
+# Estados de sessão
 if "aba_atual" not in st.session_state:
     st.session_state["aba_atual"] = "Leitura"
 
-if "codigo_lido_input" not in st.session_state:
-    st.session_state["codigo_lido_input"] = ""
+if "codigo_input" not in st.session_state:
+    st.session_state["codigo_input"] = ""
 
 if "ultimo_codigo_processado" not in st.session_state:
     st.session_state["ultimo_codigo_processado"] = ""
 
 # ==========================================
-# ESTILOS COMPACTOS
+# ESTILOS COMPACTOS E CORREÇÃO DE FOCO
 # ==========================================
 st.markdown(
     """
@@ -51,6 +51,21 @@ st.markdown(
         text-align: center;
         border-top: 1px solid #e0e0e0;
         padding-top: 6px;
+    }
+
+    div[data-baseweb="input"] {
+        border: 2px solid #0066cc !important;
+        border-radius: 6px !important;
+    }
+    div[data-baseweb="input"] input {
+        font-size: 18px !important;
+        font-weight: bold !important;
+        padding: 8px 10px !important;
+    }
+    label[data-testid="stWidgetLabel"] {
+        font-size: 15px !important;
+        font-weight: bold !important;
+        margin-bottom: 2px !important;
     }
 
     .txt-produto-encontrado {
@@ -222,8 +237,13 @@ def resetar_conferencia():
         os.remove(BANCO_DADOS)
 
 
+def ao_limpar_clicado():
+    st.session_state["codigo_input"] = ""
+    st.session_state["ultimo_codigo_processado"] = ""
+
+
 # ==========================================
-# INICIALIZAÇÃO
+# INICIALIZAÇÃO DO BANCO DE DADOS
 # ==========================================
 try:
     inicializar_banco()
@@ -231,100 +251,29 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# PROCESSAMENTO DOS PARÂMETROS DA URL
-params = st.query_params
-if "barcode" in params:
-    codigo_url = params["barcode"].strip()
-    if codigo_url == "CLEAR":
-        st.session_state["codigo_lido_input"] = ""
-        st.session_state["ultimo_codigo_processado"] = ""
-    else:
-        st.session_state["codigo_lido_input"] = codigo_url
-    st.query_params.clear()
-
 # ==========================================
 # CONTEÚDO PRINCIPAL
 # ==========================================
 if st.session_state["aba_atual"] == "Leitura":
-    st.markdown("**🔍 Leitura de Código de Barras:**")
 
-    # ENTRADA HTML COM MANUTENÇÃO RIGOROSA DO CURSOR
-    components.html(
-        f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                * {{ box-sizing: border-box; font-family: sans-serif; }}
-                body {{ margin: 0; padding: 0; background: transparent; }}
-                .input-container {{ display: flex; flex-direction: column; gap: 8px; }}
-                input {{
-                    width: 100%;
-                    padding: 10px;
-                    font-size: 18px;
-                    font-weight: bold;
-                    border: 2px solid #0066cc;
-                    border-radius: 6px;
-                    outline: none;
-                }}
-                button {{
-                    width: 100%;
-                    padding: 10px;
-                    font-size: 15px;
-                    font-weight: bold;
-                    background-color: #f0f2f6;
-                    color: #31333F;
-                    border: 1px solid #d6d6d6;
-                    border-radius: 6px;
-                    cursor: pointer;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="input-container">
-                <input type="text" id="barcode_input" placeholder="PASSE O LEITOR AQUI..." value="{st.session_state['codigo_lido_input']}" autofocus />
-                <button onclick="limparCampos()">❌ Limpar</button>
-            </div>
-
-            <script>
-                const input = document.getElementById('barcode_input');
-
-                function garantirFoco() {{
-                    input.focus();
-                }}
-                
-                garantirFoco();
-                setInterval(garantirFoco, 300);
-
-                input.addEventListener('keypress', function(e) {{
-                    if (e.key === 'Enter') {{
-                        e.preventDefault();
-                        const val = input.value.trim();
-                        if (val !== "") {{
-                            window.parent.location.search = '?barcode=' + encodeURIComponent(val);
-                        }}
-                    }}
-                }});
-
-                function limparCampos() {{
-                    input.value = '';
-                    garantirFoco();
-                    window.parent.location.search = '?barcode=CLEAR';
-                }}
-            </script>
-        </body>
-        </html>
-        """,
-        height=100,
+    # CAMPO DE LEITURA NATIVO (DIGITAÇÃO LIBERADA)
+    codigo_lido = st.text_input(
+        "🔍 Leitura de Código de Barras:",
+        placeholder="PASSE O LEITOR AQUI...",
+        key="codigo_input",
     )
 
-    codigo_lido = st.session_state["codigo_lido_input"]
+    st.button(
+        "❌ Limpar",
+        use_container_width=True,
+        on_click=ao_limpar_clicado,
+    )
 
+    # PROCESSAMENTO E EXIBIÇÃO DE VOLUMES
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
-        # Baixa o volume no banco se for uma nova leitura
-        if st.session_state.get("ultimo_codigo_processado") != codigo_limpo:
+        if st.session_state["ultimo_codigo_processado"] != codigo_limpo:
             produto = buscar_produto(codigo_limpo)
             if produto:
                 baixar_volume(codigo_limpo)
@@ -332,11 +281,10 @@ if st.session_state["aba_atual"] == "Leitura":
                 registrar_novo_produto_avulso(codigo_limpo)
             st.session_state["ultimo_codigo_processado"] = codigo_limpo
 
-        # Busca dados atualizados após a baixa
-        produto = buscar_produto(codigo_limpo)
+        produto_atualizado = buscar_produto(codigo_limpo)
 
-        if produto:
-            cod_produto, vol_totais, vol_conferidos = produto
+        if produto_atualizado:
+            cod_produto, vol_totais, vol_conferidos = produto_atualizado
 
             st.metric(
                 label="Quantidade de Volumes",
@@ -365,6 +313,23 @@ if st.session_state["aba_atual"] == "Leitura":
                 )
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
+
+    # SCRIPT DE RE-FOCO DIRETO NO CAMPO PRINCIPAL (SEM IFRAME ISOLADO)
+    st.components.v1.html(
+        """
+        <script>
+            function forcarFoco() {
+                var doc = window.parent.document;
+                var input = doc.querySelector('input[data-testid="stTextInput"]');
+                if (input && doc.activeElement !== input) {
+                    input.focus();
+                }
+            }
+            setTimeout(forcarFoco, 150);
+        </script>
+        """,
+        height=0,
+    )
 
 elif st.session_state["aba_atual"] == "Status":
     st.subheader("📋 Status dos Produtos Cadastrados")
@@ -416,7 +381,7 @@ elif st.session_state["aba_atual"] == "Opcoes":
     if st.button("🔄 Reiniciar Toda a Conferência", use_container_width=True):
         resetar_conferencia()
         st.session_state["ultimo_codigo_processado"] = ""
-        st.session_state["codigo_lido_input"] = ""
+        st.session_state["codigo_input"] = ""
         st.success("Conferência reiniciada com sucesso!")
         st.rerun()
 
