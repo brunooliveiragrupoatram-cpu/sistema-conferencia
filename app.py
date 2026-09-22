@@ -15,64 +15,36 @@ st.set_page_config(
 ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
+# Estado da navegação
+if "aba_atual" not in st.session_state:
+    st.session_state["aba_atual"] = "Leitura"
+
 # ==========================================
-# ESTILOS COMPACTOS COM ABAS FIXAS NO RODAPÉ
+# ESTILOS COMPACTOS
 # ==========================================
 st.markdown(
     """
     <style>
-    /* Esconde cabeçalhos e menus padrão do Streamlit */
-    header[data-testid="stHeader"] {
-        display: none !important;
-    }
-    #MainMenu {
-        visibility: hidden;
-    }
-    footer {
-        visibility: hidden;
-    }
+    header[data-testid="stHeader"] { display: none !important; }
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
     
-    /* Espaçamento principal para não cobrir conteúdo pelo rodapé */
     .block-container {
         padding-top: 0.5rem !important;
-        padding-bottom: 85px !important;
+        padding-bottom: 1rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
 
-    /* FIXAR AS ABAS NO RODAPÉ */
-    div[data-baseweb="tab-list"] {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        background-color: #ffffff !important;
-        z-index: 999999 !important;
-        border-top: 2px solid #e0e0e0 !important;
-        display: flex !important;
-        justify-content: space-around !important;
-        box-shadow: 0px -4px 10px rgba(0,0,0,0.1) !important;
-        padding: 5px 0px !important;
-    }
-
-    div[data-baseweb="tab-list"] button {
-        flex: 1 !important;
-        text-align: center !important;
-        font-size: 16px !important;
-        font-weight: bold !important;
-        padding: 12px 0px !important;
-        border-radius: 0px !important;
-    }
-
     .titulo-rodape {
-        font-size: 14px !important;
+        font-size: 13px !important;
         font-weight: bold;
         color: #1b5e20 !important;
-        margin-top: 20px !important;
+        margin-top: 10px !important;
         margin-bottom: 10px !important;
         text-align: center;
         border-top: 1px solid #e0e0e0;
-        padding-top: 8px;
+        padding-top: 6px;
     }
     
     div[data-baseweb="input"] {
@@ -104,17 +76,13 @@ st.markdown(
         margin-bottom: 4px !important;
     }
     
-    div[data-testid="stMetric"] {
-        padding: 0px !important;
-    }
+    div[data-testid="stMetric"] { padding: 0px !important; }
     div[data-testid="stMetricValue"] {
         font-size: 24px !important;
         color: #1b5e20 !important;
         font-weight: bold !important;
     }
-    div[data-testid="stMetricLabel"] {
-        font-size: 13px !important;
-    }
+    div[data-testid="stMetricLabel"] { font-size: 13px !important; }
     .stButton button {
         padding: 8px 12px !important;
         font-size: 15px !important;
@@ -127,7 +95,7 @@ st.markdown(
 
 
 # ==========================================
-# FUNÇÃO PARA GERAR QR CODE
+# FUNÇÕES AUXILIARES E BASE DE DADOS
 # ==========================================
 def gerar_qrcode(url):
     qr = qrcode.QRCode(
@@ -139,15 +107,11 @@ def gerar_qrcode(url):
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
-
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     return buffer.getvalue()
 
 
-# ==========================================
-# FUNÇÕES DE BANCO DE DADOS
-# ==========================================
 def conectar_bd():
     return sqlite3.connect(BANCO_DADOS)
 
@@ -155,7 +119,6 @@ def conectar_bd():
 def inicializar_banco():
     conn = conectar_bd()
     cursor = conn.cursor()
-
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS conferencia (
             cod_barras TEXT PRIMARY KEY,
@@ -164,7 +127,6 @@ def inicializar_banco():
             volumes_conferidos INTEGER
         )
     """)
-
     cursor.execute("SELECT COUNT(*) FROM conferencia")
     if cursor.fetchone()[0] == 0:
         if not os.path.exists(ARQUIVO_EXCEL):
@@ -173,7 +135,6 @@ def inicializar_banco():
 
         df = pd.read_excel(ARQUIVO_EXCEL)
         df.columns = df.columns.str.strip()
-
         df["Cod de barras XML"] = (
             df["Cod de barras XML"]
             .astype(str)
@@ -197,7 +158,6 @@ def inicializar_banco():
                     row["Volumes"],
                 ),
             )
-
         conn.commit()
     conn.close()
 
@@ -271,9 +231,6 @@ def resetar_conferencia():
         os.remove(BANCO_DADOS)
 
 
-# ==========================================
-# CALLBACK DE LIMPEZA
-# ==========================================
 def limpar_dados():
     st.session_state["codigo_input"] = ""
     st.session_state["ultimo_codigo_processado"] = ""
@@ -288,30 +245,23 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# CRIAÇÃO DAS ABAS (POSICIONADAS NO RODAPÉ VIA `div[data-baseweb="tab-list"]`)
-aba_leitura, aba_status, aba_opcoes = st.tabs(
-    ["🔍 Leitura", "📋 Status", "⚙️ Opções"]
-)
-
 # ==========================================
-# TELA 1: LEITURA DO COLETOR
+# CONTEÚDO PRINCIPAL (DEPENDENDO DA ABA SELECIONADA)
 # ==========================================
-with aba_leitura:
-    # Campo de leitura de código de barras
+if st.session_state["aba_atual"] == "Leitura":
     codigo_lido = st.text_input(
         "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
         key="codigo_input",
     )
 
-    # Botão Limpar com callback nativo do Streamlit
     st.button(
         "❌ Limpar",
         use_container_width=True,
         on_click=limpar_dados,
     )
 
-    # Script JavaScript para Auto-foco contínuo e sem perda de cursor
+    # Auto-foco via JS
     st.components.v1.html(
         """
         <script>
@@ -322,14 +272,12 @@ with aba_leitura:
                     inputElement.focus();
                 }
             }
-            // Executa o foco periodicamente a cada 400ms se o cursor for perdido
             setInterval(manterFoco, 400);
         </script>
     """,
         height=0,
     )
 
-    # Processamento e métricas dos volumes
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
@@ -363,15 +311,10 @@ with aba_leitura:
                 '<div class="txt-produto-encontrado">✅ Produto Encontrado</div>',
                 unsafe_allow_html=True,
             )
-
         else:
             if codigo_limpo.isdigit() and (5 <= len(codigo_limpo) <= 14):
-                st.metric(
-                    label="Quantidade de Volumes",
-                    value="1 Volume",
-                )
+                st.metric(label="Quantidade de Volumes", value="1 Volume")
                 st.progress(1.0)
-
                 st.markdown(
                     f'<div class="txt-codigo-produto">Código do Produto: AVULSO-{codigo_limpo}</div>',
                     unsafe_allow_html=True,
@@ -379,20 +322,10 @@ with aba_leitura:
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-    # Identificador do sistema
-    st.markdown(
-        '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
-        unsafe_allow_html=True,
-    )
-
-# ==========================================
-# TELA 2: STATUS DOS PRODUTOS
-# ==========================================
-with aba_status:
+elif st.session_state["aba_atual"] == "Status":
     st.subheader("📋 Status dos Produtos Cadastrados")
 
     df_produtos = obter_todos_produtos()
-
     col_filtros, col_busca = st.columns([1, 1])
 
     with col_filtros:
@@ -431,17 +364,9 @@ with aba_status:
     df_exibicao = df_produtos.drop(
         columns=["volumes_conferidos", "volumes_totais"]
     )
+    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
-    st.dataframe(
-        df_exibicao,
-        use_container_width=True,
-        hide_index=True,
-    )
-
-# ==========================================
-# TELA 3: OPÇÕES (REINICIAR & QR CODE)
-# ==========================================
-with aba_opcoes:
+elif st.session_state["aba_atual"] == "Opcoes":
     st.subheader("⚙️ Configurações e Ações")
 
     if st.button("🔄 Reiniciar Toda a Conferência", use_container_width=True):
@@ -465,3 +390,37 @@ with aba_opcoes:
             caption="Escanear com a câmera do coletor",
             use_container_width=True,
         )
+
+# ==========================================
+# RODAPÉ FIXO DE NAVEGAÇÃO (SUBSTITUI AS ABAS SUPERIORES)
+# ==========================================
+st.markdown(
+    '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
+    unsafe_allow_html=True,
+)
+
+col_nav1, col_nav2, col_nav3 = st.columns(3)
+
+with col_nav1:
+    btn_tipo1 = (
+        "primary" if st.session_state["aba_atual"] == "Leitura" else "secondary"
+    )
+    if st.button("🔍 Leitura", use_container_width=True, type=btn_tipo1):
+        st.session_state["aba_atual"] = "Leitura"
+        st.rerun()
+
+with col_nav2:
+    btn_tipo2 = (
+        "primary" if st.session_state["aba_atual"] == "Status" else "secondary"
+    )
+    if st.button("📋 Status", use_container_width=True, type=btn_tipo2):
+        st.session_state["aba_atual"] = "Status"
+        st.rerun()
+
+with col_nav3:
+    btn_tipo3 = (
+        "primary" if st.session_state["aba_atual"] == "Opcoes" else "secondary"
+    )
+    if st.button("⚙️ Opções", use_container_width=True, type=btn_tipo3):
+        st.session_state["aba_atual"] = "Opcoes"
+        st.rerun()
