@@ -73,7 +73,9 @@ st.markdown(
         padding: 0px !important;
     }
     div[data-testid="stMetricValue"] {
-        font-size: 22px !important;
+        font-size: 24px !important;
+        color: #1b5e20 !important;
+        font-weight: bold !important;
     }
     div[data-testid="stMetricLabel"] {
         font-size: 13px !important;
@@ -235,16 +237,11 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACKS DE CONFIRMAÇÃO
+# CALLBACKS DE AÇÃO E LIMPEZA
 # ==========================================
-def callback_confirmar_baixa(codigo):
-    baixar_volume(codigo)
+def callback_limpar():
     st.session_state["codigo_input"] = ""
-
-
-def callback_confirmar_avulso(codigo):
-    registrar_novo_produto_avulso(codigo)
-    st.session_state["codigo_input"] = ""
+    st.session_state["ultimo_codigo_processado"] = ""
 
 
 # ==========================================
@@ -276,6 +273,7 @@ with aba_leitura:
         key="codigo_input",
     )
 
+    # JavaScript para Auto-foco instantâneo sem abrir teclado
     st.components.v1.html(
         """
         <script>
@@ -295,32 +293,33 @@ with aba_leitura:
 
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
+
+        # Baixa/registro automático ao bipar o código
+        if (
+            st.session_state.get("ultimo_codigo_processado")
+            != codigo_limpo
+        ):
+            produto = buscar_produto(codigo_limpo)
+            if produto:
+                baixar_volume(codigo_limpo)
+            elif codigo_limpo.isdigit() and (5 <= len(codigo_limpo) <= 14):
+                registrar_novo_produto_avulso(codigo_limpo)
+            st.session_state["ultimo_codigo_processado"] = codigo_limpo
+
+        # Exibição do Resultado
         produto = buscar_produto(codigo_limpo)
 
         if produto:
             cod_produto, vol_totais, vol_conferidos = produto
 
             st.metric(
-                label="Progresso da Conferência",
-                value=f"{vol_conferidos}/{vol_totais} volumes",
+                label="Quantidade de Volumes",
+                value=f"{vol_conferidos} de {vol_totais} Volumes",
             )
             porcentagem = (
                 (vol_conferidos / vol_totais) if vol_totais > 0 else 0.0
             )
             st.progress(porcentagem)
-
-            if vol_conferidos < vol_totais:
-                st.button(
-                    "✅ CONFIRMAR BAIXA (+1 VOLUME)",
-                    use_container_width=True,
-                    type="primary",
-                    on_click=callback_confirmar_baixa,
-                    args=(codigo_limpo,),
-                )
-            else:
-                st.warning(
-                    f"⚠️ Todos os {vol_totais} volumes já foram conferidos!"
-                )
 
             st.markdown(
                 f'<div class="txt-codigo-produto">Código do Produto: {cod_produto}</div>',
@@ -334,18 +333,10 @@ with aba_leitura:
         else:
             if codigo_limpo.isdigit() and (5 <= len(codigo_limpo) <= 14):
                 st.metric(
-                    label="Informação do Item",
+                    label="Quantidade de Volumes",
                     value="1 Volume",
                 )
-                st.progress(0.0)
-
-                st.button(
-                    "✅ CONFIRMAR BAIXA (1 VOLUME)",
-                    use_container_width=True,
-                    type="primary",
-                    on_click=callback_confirmar_avulso,
-                    args=(codigo_limpo,),
-                )
+                st.progress(1.0)
 
                 st.markdown(
                     f'<div class="txt-codigo-produto">Código do Produto: AVULSO-{codigo_limpo}</div>',
@@ -353,6 +344,13 @@ with aba_leitura:
                 )
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
+
+        # Botão de Limpar
+        st.button(
+            "❌ Limpar",
+            use_container_width=True,
+            on_click=callback_limpar,
+        )
 
 # ==========================================
 # TELA 2: STATUS DOS PRODUTOS
@@ -415,6 +413,7 @@ with aba_opcoes:
 
     if st.button("🔄 Reiniciar Toda a Conferência", use_container_width=True):
         resetar_conferencia()
+        st.session_state["ultimo_codigo_processado"] = ""
         st.success("Conferência reiniciada com sucesso!")
         st.rerun()
 
