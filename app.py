@@ -4,6 +4,7 @@ import sqlite3
 import pandas as pd
 import qrcode
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ==========================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -234,6 +235,7 @@ def resetar_conferencia():
 def limpar_dados():
     st.session_state["codigo_input"] = ""
     st.session_state["ultimo_codigo_processado"] = ""
+    st.session_state["focar_no_input"] = True
 
 
 # ==========================================
@@ -246,7 +248,7 @@ except Exception as e:
     st.stop()
 
 # ==========================================
-# CONTEÚDO PRINCIPAL (DEPENDENDO DA ABA SELECIONADA)
+# CONTEÚDO PRINCIPAL
 # ==========================================
 if st.session_state["aba_atual"] == "Leitura":
     codigo_lido = st.text_input(
@@ -261,18 +263,20 @@ if st.session_state["aba_atual"] == "Leitura":
         on_click=limpar_dados,
     )
 
-    # Auto-foco via JS
-    st.components.v1.html(
+    # Injeção JavaScript para focar no campo após limpar ou ao carregar
+    components.html(
         """
         <script>
-            function manterFoco() {
-                var doc = window.parent.document;
-                var inputElement = doc.querySelector('input[data-testid="stTextInput"]');
-                if (inputElement && doc.activeElement !== inputElement) {
-                    inputElement.focus();
+            function forcarFocoGarantido() {
+                var inputs = window.parent.document.querySelectorAll('input[data-testid="stTextInput"]');
+                if (inputs.length > 0) {
+                    var inputLeitura = inputs[0];
+                    inputLeitura.focus();
+                    inputLeitura.select();
                 }
             }
-            setInterval(manterFoco, 400);
+            setTimeout(forcarFocoGarantido, 100);
+            setTimeout(forcarFocoGarantido, 300);
         </script>
     """,
         height=0,
@@ -392,7 +396,7 @@ elif st.session_state["aba_atual"] == "Opcoes":
         )
 
 # ==========================================
-# RODAPÉ FIXO DE NAVEGAÇÃO (SUBSTITUI AS ABAS SUPERIORES)
+# RODAPÉ FIXO DE NAVEGAÇÃO
 # ==========================================
 st.markdown(
     '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
