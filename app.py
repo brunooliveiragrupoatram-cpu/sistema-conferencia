@@ -26,7 +26,7 @@ if "ultimo_codigo_processado" not in st.session_state:
     st.session_state["ultimo_codigo_processado"] = ""
 
 # ==========================================
-# ESTILOS COMPACTOS E CORREÇÃO DE FOCO
+# ESTILOS COMPACTOS
 # ==========================================
 st.markdown(
     """
@@ -243,7 +243,7 @@ def ao_limpar_clicado():
 
 
 # ==========================================
-# INICIALIZAÇÃO DO BANCO DE DADOS
+# INICIALIZAÇÃO
 # ==========================================
 try:
     inicializar_banco()
@@ -256,7 +256,7 @@ except Exception as e:
 # ==========================================
 if st.session_state["aba_atual"] == "Leitura":
 
-    # CAMPO DE LEITURA NATIVO (DIGITAÇÃO LIBERADA)
+    # Campo de texto nativo com chave fixa
     codigo_lido = st.text_input(
         "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
@@ -269,7 +269,7 @@ if st.session_state["aba_atual"] == "Leitura":
         on_click=ao_limpar_clicado,
     )
 
-    # PROCESSAMENTO E EXIBIÇÃO DE VOLUMES
+    # Processamento de Volumes
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
@@ -314,18 +314,23 @@ if st.session_state["aba_atual"] == "Leitura":
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-    # SCRIPT DE RE-FOCO DIRETO NO CAMPO PRINCIPAL (SEM IFRAME ISOLADO)
+    # SOLUÇÃO DE FOCO VIA JAVASCRIPT DIRETO NO DOCUMENTO PAI
     st.components.v1.html(
         """
         <script>
-            function forcarFoco() {
+            function focarNoInput() {
                 var doc = window.parent.document;
-                var input = doc.querySelector('input[data-testid="stTextInput"]');
-                if (input && doc.activeElement !== input) {
+                // Busca a caixa de texto pelo placeholder
+                var input = doc.querySelector('input[placeholder="PASSE O LEITOR AQUI..."]');
+                if (input) {
                     input.focus();
                 }
             }
-            setTimeout(forcarFoco, 150);
+
+            // Tenta focar em múltiplos intervalos para garantir após a re-renderização do Streamlit
+            setTimeout(focarNoInput, 50);
+            setTimeout(focarNoInput, 200);
+            setTimeout(focarNoInput, 500);
         </script>
         """,
         height=0,
