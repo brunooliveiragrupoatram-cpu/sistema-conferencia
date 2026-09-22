@@ -16,14 +16,15 @@ ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
 # ==========================================
-# ESTILOS COMPACTOS (LAYOUT ENXUTO PARA COLETOR)
+# ESTILOS COMPACTOS COM ABAS NO RODAPÉ
 # ==========================================
 st.markdown(
     """
     <style>
+    /* Margens gerais da página para dar espaço ao rodapé fixo */
     .block-container {
         padding-top: 0.5rem !important;
-        padding-bottom: 0.5rem !important;
+        padding-bottom: 70px !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -31,12 +32,36 @@ st.markdown(
         display: none !important;
     }
     
+    /* Mover a barra de abas (stTabs) para o Rodapé Fixo */
+    div[data-testid="stTabs"] > div:first-child {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        background-color: #ffffff !important;
+        z-index: 999999 !important;
+        box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1) !important;
+        display: flex !important;
+        justify-content: space-around !important;
+        padding: 4px 0px !important;
+        border-top: 1px solid #e0e0e0 !important;
+    }
+    
+    /* Estilização dos botões das abas no rodapé */
+    div[data-testid="stTabs"] button {
+        flex-grow: 1 !important;
+        text-align: center !important;
+        font-size: 15px !important;
+        font-weight: bold !important;
+        padding: 10px 0px !important;
+    }
+
     .titulo-rodape {
         font-size: 14px !important;
         font-weight: bold;
         color: #1b5e20 !important;
-        margin-top: 20px !important;
-        margin-bottom: 10px !important;
+        margin-top: 15px !important;
+        margin-bottom: 5px !important;
         text-align: center;
         border-top: 1px solid #e0e0e0;
         padding-top: 8px;
@@ -255,7 +280,7 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# SEPARAÇÃO EM 3 ABAS NA TELA PRINCIPAL
+# CRIAÇÃO DAS ABAS (QUE SERÃO POSICIONADAS NO RODAPÉ VIA CSS)
 aba_leitura, aba_status, aba_opcoes = st.tabs(
     ["🔍 Leitura", "📋 Status", "⚙️ Opções"]
 )
@@ -271,7 +296,7 @@ with aba_leitura:
         key="codigo_input",
     )
 
-    # Botão Limpar utilizando callback para evitar erros de ciclo de vida
+    # Botão Limpar utilizando callback
     st.button(
         "❌ Limpar",
         use_container_width=True,
@@ -299,7 +324,7 @@ with aba_leitura:
         height=0,
     )
 
-    # Processamento e Informações de quantidade de volumes abaixo
+    # Processamento de leitura
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
@@ -349,7 +374,7 @@ with aba_leitura:
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-    # Título no RODAPÉ
+    # Título no final da área de conteúdo
     st.markdown(
         '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
         unsafe_allow_html=True,
