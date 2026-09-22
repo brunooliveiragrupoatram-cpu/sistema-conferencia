@@ -16,52 +16,60 @@ ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
 # ==========================================
-# ESTILOS COMPACTOS COM ABAS NO RODAPÉ
+# ESTILOS COMPACTOS COM ABAS FIXAS NO RODAPÉ
 # ==========================================
 st.markdown(
     """
     <style>
-    /* Margens gerais da página para dar espaço ao rodapé fixo */
-    .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 70px !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
+    /* Esconde cabeçalhos e menus padrão do Streamlit */
     header[data-testid="stHeader"] {
         display: none !important;
     }
+    #MainMenu {
+        visibility: hidden;
+    }
+    footer {
+        visibility: hidden;
+    }
     
-    /* Mover a barra de abas (stTabs) para o Rodapé Fixo */
-    div[data-testid="stTabs"] > div:first-child {
+    /* Espaçamento principal para não cobrir conteúdo pelo rodapé */
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 85px !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    /* FIXAR AS ABAS NO RODAPÉ */
+    div[data-baseweb="tab-list"] {
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
-        width: 100% !important;
+        width: 100vw !important;
         background-color: #ffffff !important;
         z-index: 999999 !important;
-        box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1) !important;
+        border-top: 2px solid #e0e0e0 !important;
         display: flex !important;
         justify-content: space-around !important;
-        padding: 4px 0px !important;
-        border-top: 1px solid #e0e0e0 !important;
+        box-shadow: 0px -4px 10px rgba(0,0,0,0.1) !important;
+        padding: 5px 0px !important;
     }
-    
-    /* Estilização dos botões das abas no rodapé */
-    div[data-testid="stTabs"] button {
-        flex-grow: 1 !important;
+
+    div[data-baseweb="tab-list"] button {
+        flex: 1 !important;
         text-align: center !important;
-        font-size: 15px !important;
+        font-size: 16px !important;
         font-weight: bold !important;
-        padding: 10px 0px !important;
+        padding: 12px 0px !important;
+        border-radius: 0px !important;
     }
 
     .titulo-rodape {
         font-size: 14px !important;
         font-weight: bold;
         color: #1b5e20 !important;
-        margin-top: 15px !important;
-        margin-bottom: 5px !important;
+        margin-top: 20px !important;
+        margin-bottom: 10px !important;
         text-align: center;
         border-top: 1px solid #e0e0e0;
         padding-top: 8px;
@@ -74,7 +82,7 @@ st.markdown(
     div[data-baseweb="input"] input {
         font-size: 18px !important;
         font-weight: bold !important;
-        padding: 6px 10px !important;
+        padding: 8px 10px !important;
     }
     label[data-testid="stWidgetLabel"] {
         font-size: 15px !important;
@@ -264,7 +272,7 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACKS DE LIMPEZA
+# CALLBACK DE LIMPEZA
 # ==========================================
 def limpar_dados():
     st.session_state["codigo_input"] = ""
@@ -280,7 +288,7 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
-# CRIAÇÃO DAS ABAS (QUE SERÃO POSICIONADAS NO RODAPÉ VIA CSS)
+# CRIAÇÃO DAS ABAS (POSICIONADAS NO RODAPÉ VIA `div[data-baseweb="tab-list"]`)
 aba_leitura, aba_status, aba_opcoes = st.tabs(
     ["🔍 Leitura", "📋 Status", "⚙️ Opções"]
 )
@@ -289,42 +297,39 @@ aba_leitura, aba_status, aba_opcoes = st.tabs(
 # TELA 1: LEITURA DO COLETOR
 # ==========================================
 with aba_leitura:
-    # Campo de leitura no TOPO
+    # Campo de leitura de código de barras
     codigo_lido = st.text_input(
         "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
         key="codigo_input",
     )
 
-    # Botão Limpar utilizando callback
+    # Botão Limpar com callback nativo do Streamlit
     st.button(
         "❌ Limpar",
         use_container_width=True,
         on_click=limpar_dados,
     )
 
-    # JavaScript para forçar e manter o foco no campo de texto
+    # Script JavaScript para Auto-foco contínuo e sem perda de cursor
     st.components.v1.html(
         """
         <script>
-            function forcarFoco() {
-                var inputs = window.parent.document.querySelectorAll('input[data-testid="stTextInput"]');
-                if (inputs.length > 0) {
-                    var inputLeitura = inputs[0];
-                    inputLeitura.setAttribute('inputmode', 'none');
-                    if (window.parent.document.activeElement !== inputLeitura) {
-                        inputLeitura.focus();
-                    }
+            function manterFoco() {
+                var doc = window.parent.document;
+                var inputElement = doc.querySelector('input[data-testid="stTextInput"]');
+                if (inputElement && doc.activeElement !== inputElement) {
+                    inputElement.focus();
                 }
             }
-            setTimeout(forcarFoco, 50);
-            setTimeout(forcarFoco, 200);
+            // Executa o foco periodicamente a cada 400ms se o cursor for perdido
+            setInterval(manterFoco, 400);
         </script>
     """,
         height=0,
     )
 
-    # Processamento de leitura
+    # Processamento e métricas dos volumes
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
@@ -374,7 +379,7 @@ with aba_leitura:
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-    # Título no final da área de conteúdo
+    # Identificador do sistema
     st.markdown(
         '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
         unsafe_allow_html=True,
