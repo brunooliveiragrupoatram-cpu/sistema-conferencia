@@ -239,7 +239,7 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACKS DE AÇÃO E LIMPEZA
+# CALLBACK DE LIMPEZA E REDIRECIONAMENTO DE FOCO
 # ==========================================
 def callback_limpar():
     st.session_state["codigo_input"] = ""
@@ -264,29 +264,30 @@ aba_leitura, aba_status, aba_opcoes = st.tabs(
 # TELA 1: LEITURA DO COLETOR
 # ==========================================
 with aba_leitura:
-    # 1. Campo de leitura no TOPO
+    # Campo de leitura no TOPO
     codigo_lido = st.text_input(
         "🔍 Leitura de Código de Barras:",
         placeholder="PASSE O LEITOR AQUI...",
         key="codigo_input",
     )
 
-    # 2. Botão Limpar logo abaixo da leitura
+    # Botão Limpar que reseta o estado e devolve o foco para a caixa de texto
     st.button(
         "❌ Limpar",
         use_container_width=True,
         on_click=callback_limpar,
     )
 
-    # Auto-foco via JS
+    # Injeção JS para focar automaticamente na caixa de texto e desmarcar o botão
     st.components.v1.html(
         """
         <script>
             function forcarFoco() {
-                var input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
-                if (input) {
-                    input.setAttribute('inputmode', 'none');
-                    input.focus();
+                var inputs = window.parent.document.querySelectorAll('input[data-testid="stTextInput"]');
+                if (inputs.length > 0) {
+                    var inputLeitura = inputs[0];
+                    inputLeitura.setAttribute('inputmode', 'none');
+                    inputLeitura.focus();
                 }
             }
             setTimeout(forcarFoco, 50);
@@ -296,7 +297,7 @@ with aba_leitura:
         height=0,
     )
 
-    # 3. Informações de quantidade de volumes abaixo
+    # Informações de quantidade de volumes abaixo
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
 
@@ -346,7 +347,7 @@ with aba_leitura:
             else:
                 st.error("❌ Código digitado/lido está incorreto ou é inválido!")
 
-    # 4. Título no RODAPÉ
+    # Título no RODAPÉ
     st.markdown(
         '<div class="titulo-rodape">📦 Conferência de volumes Gaja</div>',
         unsafe_allow_html=True,
