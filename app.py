@@ -239,14 +239,6 @@ def resetar_conferencia():
 
 
 # ==========================================
-# CALLBACK DE LIMPEZA E REDIRECIONAMENTO DE FOCO
-# ==========================================
-def callback_limpar():
-    st.session_state["codigo_input"] = ""
-    st.session_state["ultimo_codigo_processado"] = ""
-
-
-# ==========================================
 # INICIALIZAÇÃO
 # ==========================================
 try:
@@ -271,14 +263,13 @@ with aba_leitura:
         key="codigo_input",
     )
 
-    # Botão Limpar que reseta o estado e devolve o foco para a caixa de texto
-    st.button(
-        "❌ Limpar",
-        use_container_width=True,
-        on_click=callback_limpar,
-    )
+    # Ação do botão Limpar com rerun forçado para redirecionar o foco
+    if st.button("❌ Limpar", use_container_width=True):
+        st.session_state["codigo_input"] = ""
+        st.session_state["ultimo_codigo_processado"] = ""
+        st.rerun()
 
-    # Injeção JS para focar automaticamente na caixa de texto e desmarcar o botão
+    # JavaScript continuo para forçar o foco no campo de texto
     st.components.v1.html(
         """
         <script>
@@ -287,11 +278,13 @@ with aba_leitura:
                 if (inputs.length > 0) {
                     var inputLeitura = inputs[0];
                     inputLeitura.setAttribute('inputmode', 'none');
-                    inputLeitura.focus();
+                    if (window.parent.document.activeElement !== inputLeitura) {
+                        inputLeitura.focus();
+                        inputLeitura.click();
+                    }
                 }
             }
-            setTimeout(forcarFoco, 50);
-            setTimeout(forcarFoco, 150);
+            setInterval(forcarFoco, 300);
         </script>
     """,
         height=0,
