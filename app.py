@@ -16,9 +16,11 @@ st.set_page_config(
 ARQUIVO_EXCEL = "Programa conferencia.xlsx"
 BANCO_DADOS = "conferencia.db"
 
-# Estado da navegação
 if "aba_atual" not in st.session_state:
     st.session_state["aba_atual"] = "Leitura"
+
+if "codigo_lido_input" not in st.session_state:
+    st.session_state["codigo_lido_input"] = ""
 
 # ==========================================
 # ESTILOS COMPACTOS
@@ -47,22 +49,7 @@ st.markdown(
         border-top: 1px solid #e0e0e0;
         padding-top: 6px;
     }
-    
-    div[data-baseweb="input"] {
-        border: 2px solid #0066cc !important;
-        border-radius: 6px !important;
-    }
-    div[data-baseweb="input"] input {
-        font-size: 18px !important;
-        font-weight: bold !important;
-        padding: 8px 10px !important;
-    }
-    label[data-testid="stWidgetLabel"] {
-        font-size: 15px !important;
-        font-weight: bold !important;
-        margin-bottom: 2px !important;
-    }
-    
+
     .txt-produto-encontrado {
         font-size: 13px !important;
         color: #2e7d32;
@@ -232,12 +219,6 @@ def resetar_conferencia():
         os.remove(BANCO_DADOS)
 
 
-def limpar_dados():
-    st.session_state["codigo_input"] = ""
-    st.session_state["ultimo_codigo_processado"] = ""
-    st.session_state["focar_no_input"] = True
-
-
 # ==========================================
 # INICIALIZAÇÃO
 # ==========================================
@@ -247,40 +228,98 @@ except Exception as e:
     st.error(f"Erro ao inicializar o banco de dados: {e}")
     st.stop()
 
+# Captura valor vindo da interface HTML customizada
+params = st.query_params
+if "barcode" in params:
+    st.session_state["codigo_lido_input"] = params["barcode"]
+    # Limpa parâmetro da URL
+    st.query_params.clear()
+
 # ==========================================
 # CONTEÚDO PRINCIPAL
 # ==========================================
 if st.session_state["aba_atual"] == "Leitura":
-    codigo_lido = st.text_input(
-        "🔍 Leitura de Código de Barras:",
-        placeholder="PASSE O LEITOR AQUI...",
-        key="codigo_input",
+    st.markdown(
+        "**🔍 Leitura de Código de Barras:**", unsafe_allow_html=True
     )
 
-    st.button(
-        "❌ Limpar",
-        use_container_width=True,
-        on_click=limpar_dados,
-    )
-
-    # Injeção JavaScript para focar no campo após limpar ou ao carregar
+    # COMPONENTE DE ENTRADA HTML COM FOCO AUTOMÁTICO INQUEBRÁVEL
     components.html(
-        """
-        <script>
-            function forcarFocoGarantido() {
-                var inputs = window.parent.document.querySelectorAll('input[data-testid="stTextInput"]');
-                if (inputs.length > 0) {
-                    var inputLeitura = inputs[0];
-                    inputLeitura.focus();
-                    inputLeitura.select();
-                }
-            }
-            setTimeout(forcarFocoGarantido, 100);
-            setTimeout(forcarFocoGarantido, 300);
-        </script>
-    """,
-        height=0,
+        f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * {{ box-sizing: border-box; font-family: sans-serif; }}
+                body {{ margin: 0; padding: 0; background: transparent; }}
+                .input-container {{ display: flex; flex-direction: column; gap: 8px; }}
+                input {{
+                    width: 100%;
+                    padding: 10px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    border: 2px solid #0066cc;
+                    border-radius: 6px;
+                    outline: none;
+                }}
+                button {{
+                    width: 100%;
+                    padding: 10px;
+                    font-size: 15px;
+                    font-weight: bold;
+                    background-color: #f0f2f6;
+                    color: #31333F;
+                    border: 1px solid #d6d6d6;
+                    border-radius: 6px;
+                    cursor: pointer;
+                }}
+                button:hover {{
+                    background-color: #e0e2e6;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="input-container">
+                <input type="text" id="barcode_input" placeholder="PASSE O LEITOR AQUI..." value="{st.session_state['codigo_lido_input']}" prefix="" autofocus />
+                <button onclick="limparEFocus()">❌ Limpar</button>
+            </div>
+
+            <script>
+                const input = document.getElementById('barcode_input');
+
+                // Foco imediato e contínuo
+                function aplicarFoco() {{
+                    input.focus();
+                }}
+                
+                aplicarFoco();
+                setInterval(aplicarFoco, 300);
+
+                // Ao pressionar Enter (leitor de código de barras)
+                input.addEventListener('keypress', function(e) {{
+                    if (e.key === 'Enter') {{
+                        e.preventDefault();
+                        const val = input.value.trim();
+                        if (val !== "") {{
+                            window.parent.location.search = '?barcode=' + encodeURIComponent(val);
+                        }}
+                    }}
+                }});
+
+                // Botão Limpar com foco imediato de volta ao input
+                function limparEFocus() {{
+                    input.value = '';
+                    aplicarFoco();
+                    window.parent.location.search = '?barcode=';
+                }}
+            </script>
+        </body>
+        </html>
+        """,
+        height=100,
     )
+
+    codigo_lido = st.session_state["codigo_lido_input"]
 
     if codigo_lido:
         codigo_limpo = codigo_lido.strip()
@@ -376,6 +415,7 @@ elif st.session_state["aba_atual"] == "Opcoes":
     if st.button("🔄 Reiniciar Toda a Conferência", use_container_width=True):
         resetar_conferencia()
         st.session_state["ultimo_codigo_processado"] = ""
+        st.session_state["codigo_lido_input"] = ""
         st.success("Conferência reiniciada com sucesso!")
         st.rerun()
 
